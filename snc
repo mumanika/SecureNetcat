@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+
+import select
+import socket
+import sys
+import argparse
+import base64
+from Crypto.Random import get_random_bytes
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+from Crypto.Util.Padding import unpad
+
+BUFF_SIZE=4096
+
+class ClientServer():
+
+    def __init__(self, ip='localhost', port=50000, isServerFlag=False, password='CSC574ISAWESOME'):
+        self.Socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.Socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.clientSocket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.clientSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.address=(str(ip), int(port))
+        self.isServerFlag=isServerFlag
+        if self.isServerFlag:
+            try:
+                self.Socket.bind(self.address)
+                #self.Socket.settimeout(10)
+                print("Starting up socket on %s:%s" % self.address, file=sys.stderr)
+                self.Socket.listen(1)
+                self.conn,self.addr=self.Socket.accept()
+                self.conn.settimeout(3)
+            except KeyboardInterrupt:
+                print("Quitting process due to keyboard interrupt.", file=sys.stderr)
+                sys.exit(0)
+            except socket.error:
+                print("Socket error. Please try again later.", file=sys.stderr)
+                sys.exit(0)
+        else:
+            try:
+                self.clientSocket.connect(self.address)
+            except ConnectionRefusedError:
+                print("Connection failure to server (%s,%s)" %self.address, file=sys.stderr)
+                sys.exit(0)
+            except socket.error:
+                print("Socket error. Please try again later.", file=sys.stderr)
+                sys.exit(0)
+            else:
+                print("Starting up and connected to %s:%s" % self.address, file=sys.stderr)
+            self.clientSocket.settimeout(5)
+        self.password=password
+        self.recieveList=[]
+        self.inputList=[]
+
+
+    def serverMode(self):
+        try:
+            try:
+                data = self.conn.recv(BUFF_SIZE).decode().strip()
+                while data:
+                    self.recieveList.append(data)
+                    data=self.conn.recv(BUFF_SIZE).decode().strip()
+            except socket.timeout:
+                if (select.select([sys.stdin], [], [], 0.0)[0]):
+                    data = sys.stdin.readline().strip()
+                    while data:
+                        ciphertext = self.encryptData(data)
+                        self.conn.send(ciphertext.encode())
+                        data = sys.stdin.readline().strip()
+                else:
+                    self.conn.close()
+                    self.Socket.close()
+
+            if len(self.recieveList)!=0:
+                print("Processing the received data.", file=sys.stderr)
+                try:
+                    for i in self.recieveList:
+                        if i:
+                            plaintext = self.decryptData(i)
+                            print(plaintext.rstrip('\n'), file=sys.stdout)
+                        else:
+                            pass
+                except:
+                    print("An error in decryption or MAC verification / decryption has occurred",file=sys.stderr)
+                print("Process complete.",file=sys.stderr)
+        except socket.error:
+            print("Closing connection due to termination on remote side.", file=sys.stderr)
+            sys.exit(0)
+        except KeyboardInterrupt:
+            print("Quitting process due to keyboard interrupt.", file=sys.stderr)
+            sys.exit(0)
+
+    def clientMode(self):
+        try:
+            if (select.select([sys.stdin], [], [], 0.0)[0]):
+                data=sys.stdin.readline().strip()
+                while data:
+                    ciphertext=self.encryptData(data)
+                    #self.inputList.append(ciphertext)
+                    self.clientSocket.send(ciphertext.encode())
+                    data=sys.stdin.readline().strip()
+
+            try:
+                data=self.clientSocket.recv(BUFF_SIZE).decode().strip()
+                while data:
+                    self.recieveList.append(data)
+                    data=self.clientSocket.recv(BUFF_SIZE).decode().strip()
+            except socket.timeout:
+                self.clientSocket.close()
+
+
+            if len(self.recieveList) != 0:
+                print("Processing the received data.", file=sys.stderr)
+                try:
+                    for i in self.recieveList:
+                        if i:
+                            plaintext = self.decryptData(i)
+                            print(plaintext.rstrip('\n'), file=sys.stdout)
+                        else:
+                            pass
+                except:
+                    print("An error in decryption or MAC verification / decryption has occurred", file=sys.stderr)
+                print("Process complete.", file=sys.stderr)
+        except KeyboardInterrupt:
+            print("Quitting process due to keyboard interrupt.", file=sys.stderr)
+            sys.exit(0)
+        except socket.error:
+            print("Closing connection due to termination on remote side.", file=sys.stderr)
+            sys.exit(0)
+
+    def genKey(self,password,salt):
+        return PBKDF2(password, salt, dkLen=32, count=1000)
+
+    def encryptData(self,data):
+        nonce = get_random_bytes(16)
+        salt = get_random_bytes(32)
+        cipher = AES.new(self.genKey(self.password, salt), AES.MODE_GCM, nonce=nonce)
+        ciphered_data, digest = cipher.encrypt_and_digest(data.encode('utf-8'))
+        return base64.b64encode(nonce + salt + ciphered_data + digest).decode('utf-8')
+
+    def decryptData(self,data):
+        data = base64.b64decode(data)
+        nonce = data[:16]
+        salt = data[16:48]
+        ciphered_data = data[48:-16]
+        digest = data[-16:]
+        cipher = AES.new(self.genKey(self.password, salt), AES.MODE_GCM, nonce=nonce)
+        original_data = cipher.decrypt_and_verify(ciphered_data, digest).decode('utf-8')
+        return original_data
+
+
+
+parser = argparse.ArgumentParser(description='Initiate SNC in client mode or server mode')
+parser.add_argument('--key', default='CSC574ISAWESOME', type=str, required=True, help='A key value that will be used to encrypt data', dest='uKey')
+parser.add_argument('-l', help='option to start the system in server mode', action='store_const', const='localhost', dest='ip', required=False)
+parser.add_argument('address', help='Enter the IP address of the server followed by the port number', nargs='+')
+
+args=vars(parser.parse_args())
+
+if args['ip'] == None and len(args['address']) != 2:
+    print("Invalid number of arguments", file=sys.stderr)
+    sys.exit(0)
+
+#ClientMode
+elif args['ip'] == None and len(args['address']) == 2:
+    isServerFlag = False
+    ip=args['address'][0]
+    port=int(args['address'][1])
+    uKey=args['uKey']
+    csobj = ClientServer(ip, port, isServerFlag, uKey)
+    csobj.clientMode()
+
+#ServerMode
+elif args['ip'] != None and len(args['address']) == 1:
+    isServerFlag=True
+    ip=args['ip']
+    port=int(args['address'][0])
+    uKey = args['uKey']
+    csobj=ClientServer(ip, port, isServerFlag, uKey )
+    csobj.serverMode()
+else:
+    print("Invalid arguments", file=sys.stderr)
+    sys.exit(0)
