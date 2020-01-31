@@ -62,11 +62,11 @@ class ClientServer():
                     data=self.conn.recv(BUFF_SIZE).decode().strip()
             except socket.timeout:
                 if (select.select([sys.stdin], [], [], 0.0)[0]):
-                    data = sys.stdin.readline()
+                    data = sys.stdin.readline().strip()
                     while data:
                         ciphertext = self.encryptData(data)
                         self.conn.send(ciphertext.encode())
-                        data = sys.stdin.readline()
+                        data = sys.stdin.readline().strip()
                 else:
                     self.conn.close()
                     self.Socket.close()
@@ -77,8 +77,7 @@ class ClientServer():
                     for i in self.recieveList:
                         if i:
                             plaintext = self.decryptData(i)
-                            sys.stdout.write(plaintext)
-                            #print(plaintext.rstrip('\n'), file=sys.stdout)
+                            print(plaintext.rstrip('\n'), file=sys.stdout)
                         else:
                             pass
                 except:
@@ -94,12 +93,12 @@ class ClientServer():
     def clientMode(self):
         try:
             if (select.select([sys.stdin], [], [], 0.0)[0]):
-                data=sys.stdin.readline()
+                data=sys.stdin.readline().strip()
                 while data:
                     ciphertext=self.encryptData(data)
                     #self.inputList.append(ciphertext)
                     self.clientSocket.send(ciphertext.encode())
-                    data=sys.stdin.readline()
+                    data=sys.stdin.readline().strip()
 
             try:
                 data=self.clientSocket.recv(BUFF_SIZE).decode().strip()
@@ -116,8 +115,7 @@ class ClientServer():
                     for i in self.recieveList:
                         if i:
                             plaintext = self.decryptData(i)
-                            sys.stdout.write(plaintext)
-                            #print(plaintext.rstrip('\n'), file=sys.stdout)
+                            print(plaintext.rstrip('\n'), file=sys.stdout)
                         else:
                             pass
                 except:
