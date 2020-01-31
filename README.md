@@ -35,8 +35,8 @@ The parameters of the commands are:
 --key : This is the password that the user must provide in order to securely encrypt the data that is being transferred. This is a mandatory parameter.
 -l: This specifies that the program will run in server mode. 
 Ensure that a valid port number and address if provided (if in client mode) or the script will not start. 
-> : Specifies output redirection
-< : Specifies input file
+'>' : Specifies output redirection
+'<' : Specifies input file
 
 Author: 
 #######
