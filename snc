@@ -62,11 +62,11 @@ class ClientServer():
                     data=self.conn.recv(BUFF_SIZE).decode().strip()
             except socket.timeout:
                 if (select.select([sys.stdin], [], [], 0.0)[0]):
-                    data = sys.stdin.readline().strip()
+                    data = sys.stdin.readline()
                     while data:
                         ciphertext = self.encryptData(data)
                         self.conn.send(ciphertext.encode())
-                        data = sys.stdin.readline().strip()
+                        data = sys.stdin.readline()
                 else:
                     self.conn.close()
                     self.Socket.close()
@@ -94,12 +94,12 @@ class ClientServer():
     def clientMode(self):
         try:
             if (select.select([sys.stdin], [], [], 0.0)[0]):
-                data=sys.stdin.readline().strip()
+                data=sys.stdin.readline()
                 while data:
                     ciphertext=self.encryptData(data)
                     #self.inputList.append(ciphertext)
                     self.clientSocket.send(ciphertext.encode())
-                    data=sys.stdin.readline().strip()
+                    data=sys.stdin.readline()
 
             try:
                 data=self.clientSocket.recv(BUFF_SIZE).decode().strip()
