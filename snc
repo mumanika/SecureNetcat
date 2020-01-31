@@ -77,7 +77,7 @@ class ClientServer():
                     for i in self.recieveList:
                         if i:
                             plaintext = self.decryptData(i)
-                            print(plaintext.rstrip('\n'), file=sys.stdout)
+                            print(plaintext, file=sys.stdout)
                         else:
                             pass
                 except:
@@ -115,7 +115,7 @@ class ClientServer():
                     for i in self.recieveList:
                         if i:
                             plaintext = self.decryptData(i)
-                            print(plaintext.rstrip('\n'), file=sys.stdout)
+                            print(plaintext, file=sys.stdout)
                         else:
                             pass
                 except:
