@@ -77,11 +77,12 @@ class ClientServer():
                     for i in self.recieveList:
                         if i:
                             plaintext = self.decryptData(i)
-                            print(plaintext, file=sys.stdout)
+                            print(plaintext.rstrip('\n'), file=sys.stdout)
                         else:
                             pass
                 except:
                     print("An error in decryption or MAC verification / decryption has occurred",file=sys.stderr)
+                print("\n",file=sys.stdout)
                 print("Process complete.",file=sys.stderr)
         except socket.error:
             print("Closing connection due to termination on remote side.", file=sys.stderr)
@@ -115,11 +116,12 @@ class ClientServer():
                     for i in self.recieveList:
                         if i:
                             plaintext = self.decryptData(i)
-                            print(plaintext, file=sys.stdout)
+                            print(plaintext.rstrip('\n'), file=sys.stdout)
                         else:
                             pass
                 except:
                     print("An error in decryption or MAC verification / decryption has occurred", file=sys.stderr)
+                print("\n",file=sys.stdout)
                 print("Process complete.", file=sys.stderr)
         except KeyboardInterrupt:
             print("Quitting process due to keyboard interrupt.", file=sys.stderr)
