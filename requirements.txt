@@ -1,2 +1,2 @@
 argparse==1.4.0
-pycryptodome==3.9.4
+pycryptodome==3.19.1
